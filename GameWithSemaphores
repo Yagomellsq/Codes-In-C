@@ -1,0 +1,112 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+#include <time.h>
+#include <locale.h>
+
+#define TRACK_LENGTH 50
+
+typedef struct {
+    int id;
+    int position;
+} Car;
+
+Car cars[3];
+sem_t sem;
+
+void *move_car() {
+    int random = 5;
+    int i;
+    int j;
+    
+    while (1) {
+        random = rand() % 3;
+        sem_wait(&sem);
+
+        if (random == 0) {
+            cars[0].position++;
+        }
+
+        if (random == 1) {
+            cars[1].position++;
+        }
+
+        if (random == 2) {
+            cars[2].position++;
+        }
+        
+        system("cls");
+        for (i = 0; i < 3; i++) {
+                printf("Carro %d: ", cars[i].id);
+                for (j = 0; j < cars[i].position; j++) {
+                    printf("-");
+                }
+                printf("%d\n", cars[i].id);
+            }
+        if (cars[0].position >= TRACK_LENGTH || cars[1].position >= TRACK_LENGTH || cars[2].position >= TRACK_LENGTH) {
+            sem_post(&sem);
+            break;
+        }
+
+        sem_post(&sem);
+        usleep(500000);
+    }
+    pthread_exit(NULL)
+}
+
+void determine_winner() {
+    int winner = -1;
+    int max_position = -1;
+    int i;
+
+    // Percorre os carros para determinar o vencedor ou empate
+    for (i = 0; i < 3; i++) {
+        if (cars[i].position > max_position) {
+            max_position = cars[i].position;
+            winner = cars[i].id;
+        }
+    }
+    printf("O vencedor é o carro %d!\n", winner);
+}
+
+int main() {
+    setlocale(LC_ALL, "Portuguese");
+    int i;
+    int command;
+    pthread_t threads[3];
+    srand(time(NULL));
+
+    printf("Digite 1 para iniciar o jogo ou 2 para sair: ");
+    while (scanf("%d", &command)) {
+        if (command == 1) {
+            break;
+        } else if (command == 2) {
+            printf("Jogo encerrado.\n");
+            return 0;
+        } else {
+            printf("Comando desconhecido. \nDigite 1 para iniciar o jogo ou 2 para sair: ");
+        }
+    }
+
+    sem_init(&sem, 0, 1);
+
+    for (i = 0; i < 3; i++) {
+        cars[i].id = i + 1;
+        cars[i].position = 0;
+        pthread_create(&threads[i], NULL, move_car, (void*)&cars[i]);
+    }
+
+
+
+    for (i = 0; i < 3; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    determine_winner();
+
+    sem_destroy(&sem);
+
+    return 0;
+}
